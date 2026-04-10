@@ -5,6 +5,22 @@
 (function () {
   'use strict';
 
+  /* --- [#1] Dark mode toggle --- */
+  var themeToggle = document.getElementById('themeToggle');
+  var savedTheme = localStorage.getItem('ss-theme');
+  if (savedTheme) {
+    document.documentElement.setAttribute('data-theme', savedTheme);
+  }
+
+  if (themeToggle) {
+    themeToggle.addEventListener('click', function () {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('ss-theme', next);
+    });
+  }
+
   /* --- Page Loader --- */
   var pageLoader = document.getElementById('pageLoader');
   window.addEventListener('load', function () {
@@ -69,6 +85,37 @@
 
   navLinks.querySelectorAll('a').forEach(function (link) {
     link.addEventListener('click', closeMobileMenu);
+  });
+
+  /* --- [#3] Swipe-right-to-close mobile menu --- */
+  var touchStartX = 0;
+  var touchCurrentX = 0;
+  var isSwiping = false;
+
+  navLinks.addEventListener('touchstart', function (e) {
+    touchStartX = e.touches[0].clientX;
+    isSwiping = true;
+  }, { passive: true });
+
+  navLinks.addEventListener('touchmove', function (e) {
+    if (!isSwiping) return;
+    touchCurrentX = e.touches[0].clientX;
+    var diff = touchCurrentX - touchStartX;
+    if (diff > 0) {
+      navLinks.style.transform = 'translateX(' + diff + 'px)';
+    }
+  }, { passive: true });
+
+  navLinks.addEventListener('touchend', function () {
+    if (!isSwiping) return;
+    isSwiping = false;
+    var diff = touchCurrentX - touchStartX;
+    if (diff > 80) {
+      closeMobileMenu();
+    }
+    navLinks.style.transform = '';
+    touchCurrentX = 0;
+    touchStartX = 0;
   });
 
   /* --- [4] Hero cursor spotlight --- */
@@ -178,6 +225,8 @@
       el.textContent = current + suffix;
       if (progress < 1) {
         requestAnimationFrame(step);
+      } else {
+        el.classList.add('counted');
       }
     }
     requestAnimationFrame(step);
@@ -203,6 +252,127 @@
       el.textContent = el.getAttribute('data-count') + (el.getAttribute('data-suffix') || '');
     });
   }
+
+  /* --- [#6] Animated process progress line on scroll --- */
+  var processFill = document.getElementById('processFill');
+  var processSection = document.querySelector('.process');
+
+  if (processFill && processSection) {
+    window.addEventListener('scroll', function () {
+      var rect = processSection.getBoundingClientRect();
+      var vh = window.innerHeight;
+      if (rect.top < vh && rect.bottom > 0) {
+        var total = rect.height + vh;
+        var scrolled = vh - rect.top;
+        var progress = Math.min(Math.max(scrolled / total, 0), 1) * 100;
+        processFill.style.width = progress + '%';
+      }
+    }, { passive: true });
+  }
+
+  /* --- Back to top button --- */
+  var backToTop = document.getElementById('backToTop');
+  if (backToTop) {
+    window.addEventListener('scroll', function () {
+      if (window.scrollY > 600) {
+        backToTop.classList.add('visible');
+      } else {
+        backToTop.classList.remove('visible');
+      }
+    }, { passive: true });
+
+    backToTop.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  /* --- Heritage image slideshow --- */
+  var heritageSlides = document.querySelectorAll('.heritage__slide');
+  if (heritageSlides.length > 1) {
+    var currentSlide = 0;
+    setInterval(function () {
+      heritageSlides[currentSlide].classList.remove('heritage__slide--active');
+      currentSlide = (currentSlide + 1) % heritageSlides.length;
+      heritageSlides[currentSlide].classList.add('heritage__slide--active');
+    }, 2000);
+  }
+
+  /* --- [#5] Sticky mobile CTA bar — show after scrolling past hero --- */
+  var mobileCta = document.getElementById('mobileCta');
+  if (mobileCta) {
+    window.addEventListener('scroll', function () {
+      if (window.scrollY > window.innerHeight * 0.8) {
+        mobileCta.classList.add('visible');
+      } else {
+        mobileCta.classList.remove('visible');
+      }
+    }, { passive: true });
+  }
+
+  /* --- [#9] Testimonial scroll dot indicators --- */
+  var testimonialsGrid = document.querySelector('.testimonials__grid');
+  var dots = document.querySelectorAll('.testimonials__dot');
+
+  if (testimonialsGrid && dots.length > 0) {
+    function updateDots() {
+      var scrollLeft = testimonialsGrid.scrollLeft;
+      var cardWidth = testimonialsGrid.querySelector('.testimonial-card').offsetWidth;
+      var gap = 16;
+      var index = Math.round(scrollLeft / (cardWidth + gap));
+      dots.forEach(function (dot, i) {
+        dot.classList.toggle('testimonials__dot--active', i === index);
+      });
+    }
+
+    testimonialsGrid.addEventListener('scroll', updateDots, { passive: true });
+
+    dots.forEach(function (dot, i) {
+      dot.addEventListener('click', function () {
+        var card = testimonialsGrid.querySelector('.testimonial-card');
+        var cardWidth = card.offsetWidth;
+        var gap = 16;
+        testimonialsGrid.scrollTo({
+          left: i * (cardWidth + gap),
+          behavior: 'smooth'
+        });
+      });
+    });
+  }
+
+  /* --- [#5] WhatsApp chat widget --- */
+  var waFab = document.getElementById('waFab');
+  var waClose = document.getElementById('waClose');
+  var waWidget = document.getElementById('waWidget');
+
+  if (waFab && waWidget) {
+    waFab.addEventListener('click', function () {
+      waWidget.classList.toggle('open');
+    });
+
+    if (waClose) {
+      waClose.addEventListener('click', function () {
+        waWidget.classList.remove('open');
+      });
+    }
+
+    document.addEventListener('click', function (e) {
+      if (!waWidget.contains(e.target)) {
+        waWidget.classList.remove('open');
+      }
+    });
+  }
+
+  /* --- [#6] Image blur-up on load --- */
+  var slideImages = document.querySelectorAll('.heritage__slide');
+  slideImages.forEach(function (img) {
+    if (img.complete) {
+      img.classList.add('loaded');
+    } else {
+      img.addEventListener('load', function () {
+        img.classList.add('loaded');
+      });
+    }
+  });
 
   /* --- Contact form → WhatsApp --- */
   var contactForm = document.getElementById('contactForm');
